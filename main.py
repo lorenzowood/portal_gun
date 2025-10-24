@@ -14,19 +14,26 @@ from animations import AnimationCompositor, GentleMotionManager, SparkleGroupMan
 class PortalGun:
     """Main Portal Gun controller"""
 
+    def _shuffle(self, items):
+        """Fisher-Yates shuffle implementation"""
+        import random
+        result = items.copy()
+        n = len(result)
+        for i in range(n - 1, 0, -1):
+            j = random.randint(0, i)
+            result[i], result[j] = result[j], result[i]
+        return result
+
     def _generate_random_sequences(self):
         """Generate pre-shuffled character sequences for display animations"""
-        import random
-
         # Generate letters sequence (A-F): 10 blocks of 6 = 60 characters
         letters = ['A', 'B', 'C', 'D', 'E', 'F']
         letter_blocks = []
         for _ in range(10):
-            block = letters.copy()
-            random.shuffle(block)
+            block = self._shuffle(letters)
             # Avoid consecutive duplicates across block boundaries
             while letter_blocks and letter_blocks[-1] == block[0]:
-                random.shuffle(block)
+                block = self._shuffle(letters)
             letter_blocks.extend(block)
         self.random_letters = ''.join(letter_blocks)
 
@@ -34,11 +41,10 @@ class PortalGun:
         digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
         digit_blocks = []
         for _ in range(6):
-            block = digits.copy()
-            random.shuffle(block)
+            block = self._shuffle(digits)
             # Avoid consecutive duplicates across block boundaries
             while digit_blocks and digit_blocks[-1] == block[0]:
-                random.shuffle(block)
+                block = self._shuffle(digits)
             digit_blocks.extend(block)
         self.random_digits = ''.join(digit_blocks)
 
