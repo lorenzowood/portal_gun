@@ -14,9 +14,42 @@ from animations import AnimationCompositor, GentleMotionManager, SparkleGroupMan
 class PortalGun:
     """Main Portal Gun controller"""
 
+    def _generate_random_sequences(self):
+        """Generate pre-shuffled character sequences for display animations"""
+        import random
+
+        # Generate letters sequence (A-F): 10 blocks of 6 = 60 characters
+        letters = ['A', 'B', 'C', 'D', 'E', 'F']
+        letter_blocks = []
+        for _ in range(10):
+            block = letters.copy()
+            random.shuffle(block)
+            # Avoid consecutive duplicates across block boundaries
+            while letter_blocks and letter_blocks[-1] == block[0]:
+                random.shuffle(block)
+            letter_blocks.extend(block)
+        self.random_letters = ''.join(letter_blocks)
+
+        # Generate digits sequence (0-9): 6 blocks of 10 = 60 characters
+        digits = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9']
+        digit_blocks = []
+        for _ in range(6):
+            block = digits.copy()
+            random.shuffle(block)
+            # Avoid consecutive duplicates across block boundaries
+            while digit_blocks and digit_blocks[-1] == block[0]:
+                random.shuffle(block)
+            digit_blocks.extend(block)
+        self.random_digits = ''.join(digit_blocks)
+
+        print(f"Random sequences generated: {len(self.random_letters)} letters, {len(self.random_digits)} digits")
+
     def __init__(self):
         """Initialize all subsystems"""
         print("Portal Gun initializing...")
+
+        # Pre-generate random character sequences for display animations
+        self._generate_random_sequences()
 
         # Initialize hardware
         self.hardware = HardwareManager()
@@ -221,17 +254,13 @@ class PortalGun:
                         self.hardware.display.show_text(final_code)
 
             elif state.phase == state.PHASE_RAMPUP:
-                # Random letters and digits every 100ms
-                import random
+                # Cycle through pre-generated random sequences every 100ms
                 cycle_count = phase_elapsed // Config.PORTAL_RAMPUP_DISPLAY_UPDATE_MS
-                random.seed(cycle_count)  # Deterministic based on time
-                # First char: random letter A-F
-                letters = ['A', 'B', 'C', 'D', 'E', 'F']
-                letter = letters[random.randint(0, 5)]
-                # Other chars: random digits
-                d1 = random.randint(0, 9)
-                d2 = random.randint(0, 9)
-                d3 = random.randint(0, 9)
+                # Index into pre-shuffled sequences (wrap around)
+                letter = self.random_letters[cycle_count % len(self.random_letters)]
+                d1 = self.random_digits[cycle_count % len(self.random_digits)]
+                d2 = self.random_digits[(cycle_count + 1) % len(self.random_digits)]
+                d3 = self.random_digits[(cycle_count + 2) % len(self.random_digits)]
                 display_str = f"{letter}{d1}{d2}{d3}"
                 self.hardware.display.show_text(display_str)
 
@@ -243,22 +272,20 @@ class PortalGun:
                 if num_locked > 4:
                     num_locked = 4
 
-                # Build display string
-                import random
+                # Build display string - cycle through pre-generated sequences
                 cycle_count = phase_elapsed // Config.PORTAL_DISPLAY_CYCLE_MS
-                random.seed(cycle_count)
                 display_str = ""
                 for i in range(4):
                     if i < num_locked:
                         # Locked - show actual character
                         display_str += final_code[i]
                     else:
-                        # Unlocked - random cycling
+                        # Unlocked - cycle through pre-shuffled sequences
                         if i == 0:
-                            letters = ['A', 'B', 'C', 'D', 'E', 'F']
-                            display_str += letters[random.randint(0, 5)]
+                            # Use offset based on position to avoid same letter in multiple positions
+                            display_str += self.random_letters[(cycle_count + i) % len(self.random_letters)]
                         else:
-                            display_str += str(random.randint(0, 9))
+                            display_str += self.random_digits[(cycle_count + i) % len(self.random_digits)]
 
                 self.hardware.display.show_text(display_str)
 
