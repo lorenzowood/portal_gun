@@ -11,7 +11,7 @@ class UniverseCode:
     """Manages universe code format and operations"""
 
     VALID_LETTERS = 'ABCDEF'
-    PATTERN = re.compile(r'^([A-Fa-f])(\d{3})$')
+    PATTERN = re.compile(r'^([A-Fa-f])(\d\d\d)$')
 
     def __init__(self, code):
         """
