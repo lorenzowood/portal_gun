@@ -37,6 +37,11 @@ class MockTime:
         """Sleep for specified seconds"""
         self.sleep_ms(int(seconds * 1000))
 
+    def sleep_us(self, us):
+        """Sleep for specified microseconds"""
+        # For testing, just advance by microseconds / 1000 (convert to ms)
+        self._current_ms += us / 1000
+
     def advance(self, ms):
         """Test helper: advance time without sleeping"""
         self._current_ms += ms
@@ -59,6 +64,7 @@ ticks_ms = _mock_time.ticks_ms
 ticks_diff = _mock_time.ticks_diff
 ticks_add = _mock_time.ticks_add
 sleep_ms = _mock_time.sleep_ms
+sleep_us = _mock_time.sleep_us
 sleep = _mock_time.sleep
 
 # Test helpers
