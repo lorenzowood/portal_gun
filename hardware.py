@@ -256,13 +256,13 @@ class EncoderReader:
         # If CLK changed from HIGH to LOW (falling edge)
         if self.last_clk_state == 1 and clk_state == 0:
             if dt_state == 0:
-                # Clockwise
-                self.events.append(1)
-                self.position += 1
-            else:
                 # Counter-clockwise
                 self.events.append(-1)
                 self.position -= 1
+            else:
+                # Clockwise
+                self.events.append(1)
+                self.position += 1
 
         self.last_clk_state = clk_state
 
