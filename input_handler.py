@@ -90,22 +90,19 @@ class InputHandler:
 
         now = time.ticks_ms()
 
-        # Check encoder
+        # Check encoder - drain entire queue to avoid lag
         if self.hardware.encoder:
-            current_position = self.hardware.encoder.position
-            delta = current_position - self.last_encoder_position
+            while True:
+                delta = self.hardware.encoder.read()
+                if delta == 0:
+                    break  # Queue is empty
 
-            if delta != 0:
                 self.reset_idle_timer()
-                # Generate events for each click
+                # Generate events based on delta
                 if delta > 0:
-                    for _ in range(delta):
-                        events.append(InputEvent(InputEvent.ENCODER_CW))
-                else:
-                    for _ in range(abs(delta)):
-                        events.append(InputEvent(InputEvent.ENCODER_CCW))
-
-                self.last_encoder_position = current_position
+                    events.append(InputEvent(InputEvent.ENCODER_CW))
+                elif delta < 0:
+                    events.append(InputEvent(InputEvent.ENCODER_CCW)) 
 
         # Check button state
         if self.hardware.button:
