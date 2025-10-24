@@ -23,7 +23,8 @@ class Pin:
         self.pin_id = pin_id
         self.mode = mode
         self.pull = pull
-        self._value = 0
+        # If pull-up, default to HIGH (1), otherwise LOW (0)
+        self._value = 1 if pull == Pin.PULL_UP else 0
         self._irq_handler = None
         self._irq_trigger = None
 
