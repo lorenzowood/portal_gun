@@ -254,9 +254,11 @@ class PortalGun:
                     else:
                         # Unlocked - random cycling
                         if i == 0:
-                            display_str += random.choice(['A', 'B', 'C', 'D', 'E', 'F'])
+                            letter = random.choice(['A', 'B', 'C', 'D', 'E', 'F'])
+                            display_str += letter
                         else:
-                            display_str += str(random.randint(0, 9))
+                            digit = str(random.randint(0, 9))
+                            display_str += digit
 
                 self.hardware.display.show_text(display_str)
 
