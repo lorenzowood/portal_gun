@@ -226,7 +226,7 @@ class PortalGun:
                 cycle_count = phase_elapsed // Config.PORTAL_RAMPUP_DISPLAY_UPDATE_MS
                 random.seed(cycle_count)  # Deterministic based on time
                 # First char: random letter A-F
-                letter = random.choice('ABCDEF')
+                letter = random.choice(['A', 'B', 'C', 'D', 'E', 'F'])
                 # Other chars: random digits
                 d1 = random.randint(0, 9)
                 d2 = random.randint(0, 9)
@@ -254,7 +254,7 @@ class PortalGun:
                     else:
                         # Unlocked - random cycling
                         if i == 0:
-                            display_str += random.choice('ABCDEF')
+                            display_str += random.choice(['A', 'B', 'C', 'D', 'E', 'F'])
                         else:
                             display_str += str(random.randint(0, 9))
 
