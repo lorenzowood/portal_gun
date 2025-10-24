@@ -544,7 +544,7 @@ class PortalGun:
                 t = min(1.0, phase_elapsed / Config.PORTAL_RAMPUP_DURATION_MS)
                 brightness = int(t * Config.PORTAL_GENERATE_LED_BRIGHTNESS)
             elif state.phase == state.PHASE_GENERATE:
-                # Oscillate with throb, plus noise
+                # Oscillate with throb, plus independent noise per LED
                 throb = self._get_throb_extension(phase_elapsed)
 
                 # Map throb extension (40-90%) to LED brightness (50-100%)
@@ -553,19 +553,30 @@ class PortalGun:
                 led_range = Config.PORTAL_GENERATE_LED_OSC_MAX - Config.PORTAL_GENERATE_LED_OSC_MIN
                 base_brightness = Config.PORTAL_GENERATE_LED_OSC_MIN + ((throb - Config.PORTAL_GENERATE_THROB_MIN) / throb_range) * led_range
 
-                # Add noise: ±20% at 20Hz (50ms period)
+                # Add independent noise to each LED: ±20% at 20Hz (50ms period)
                 import random
                 noise_cycle = int(phase_elapsed / (1000 / Config.PORTAL_GENERATE_LED_NOISE_HZ))
-                random.seed(noise_cycle)
-                noise = random.uniform(-Config.PORTAL_GENERATE_LED_NOISE, Config.PORTAL_GENERATE_LED_NOISE)
 
-                brightness = int(max(0, min(100, base_brightness + noise)))
+                # Set each LED with independent noise
+                for led_index in range(3):
+                    # Different seed per LED for independent noise
+                    random.seed(noise_cycle * 10 + led_index)
+                    noise = random.uniform(-Config.PORTAL_GENERATE_LED_NOISE, Config.PORTAL_GENERATE_LED_NOISE)
+                    brightness = int(max(0, min(100, base_brightness + noise)))
+                    self.hardware.leds.set_brightness(led_index, brightness)
+
+                # Skip set_all_brightness below
+                brightness = None
             elif state.phase == state.PHASE_RAMPDOWN:
                 # Ramp down to 0% over 2 seconds
                 t = min(1.0, phase_elapsed / Config.PORTAL_RAMPDOWN_DURATION_MS)
                 brightness = int((1 - t) * Config.PORTAL_GENERATE_LED_BRIGHTNESS)
+            else:
+                brightness = 0
 
-            self.hardware.leds.set_all_brightness(brightness)
+            # For non-GENERATE phases, set all LEDs to same brightness
+            if brightness is not None:
+                self.hardware.leds.set_all_brightness(brightness)
 
             # Debug (occasionally)
             if now % 500 < 20:
