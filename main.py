@@ -168,10 +168,34 @@ class PortalGun:
             self.hardware.display.show_text(str(self.state_machine.universe_code))
 
         elif isinstance(state, UniverseCodeEditState):
-            # Show universe code with flashing character
-            # For simplicity, just show current code
-            # TODO: Implement flashing character at edit_position
-            self.hardware.display.show_text(str(self.state_machine.universe_code))
+            # Show universe code with flashing character being edited
+            code_str = str(self.state_machine.universe_code)
+            edit_pos = state.edit_position
+
+            # Build display string: confirmed chars + current char (maybe flashing) + spaces
+            display_str = ""
+            for i in range(4):
+                if i < edit_pos:
+                    # Already confirmed - show it
+                    display_str += code_str[i]
+                elif i == edit_pos:
+                    # Currently editing - flash it
+                    if state.enter_time is not None:
+                        elapsed = time.ticks_diff(time.ticks_ms(), state.enter_time)
+                        flash_period = Config.EDIT_FLASH_RATE_MS
+                        flash_on = (elapsed % flash_period) < (flash_period * Config.EDIT_FLASH_DUTY)
+                    else:
+                        flash_on = True
+
+                    if flash_on:
+                        display_str += code_str[i]
+                    else:
+                        display_str += " "
+                else:
+                    # Not confirmed yet - blank
+                    display_str += " "
+
+            self.hardware.display.show_text(display_str)
 
         elif isinstance(state, PortalGeneratingState):
             # Show universe code (would implement phase-specific display later)

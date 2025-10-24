@@ -94,10 +94,12 @@ class UniverseCodeEditState(State):
         super().__init__(machine)
         self.edit_position = 0  # 0=letter, 1-3=digits
         self.original_code = str(machine.universe_code)
+        self.enter_time = None
 
     def enter(self):
         """Enter edit mode"""
         self.edit_position = 0
+        self.enter_time = time.ticks_ms()
 
     def handle_input(self, event):
         """Handle input in edit mode"""

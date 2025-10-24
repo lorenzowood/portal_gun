@@ -223,7 +223,7 @@ class NeopixelController:
 
 
 class EncoderReader:
-    """Read rotary encoder rotation"""
+    """Read rotary encoder rotation with quadrature decoding"""
 
     def __init__(self, clk_pin, dt_pin):
         """
@@ -235,8 +235,24 @@ class EncoderReader:
         """
         self.clk_pin = Pin(clk_pin, Pin.IN, Pin.PULL_UP)
         self.dt_pin = Pin(dt_pin, Pin.IN, Pin.PULL_UP)
-        self.last_clk = self.clk_pin.value()
+
+        # Quadrature state tracking
+        self.last_state = (self.clk_pin.value() << 1) | self.dt_pin.value()
         self.position = 0
+
+        # State transition table for quadrature encoding
+        # Clockwise:  00 -> 01 -> 11 -> 10 -> 00
+        # Counter-CW: 00 -> 10 -> 11 -> 01 -> 00
+        self.transitions = {
+            (0b00, 0b01): 1,   # CW
+            (0b01, 0b11): 1,   # CW
+            (0b11, 0b10): 1,   # CW
+            (0b10, 0b00): 1,   # CW
+            (0b00, 0b10): -1,  # CCW
+            (0b10, 0b11): -1,  # CCW
+            (0b11, 0b01): -1,  # CCW
+            (0b01, 0b00): -1,  # CCW
+        }
 
     def read(self):
         """
@@ -245,23 +261,19 @@ class EncoderReader:
         Returns:
             Delta: +1 for clockwise, -1 for counter-clockwise, 0 for no change
         """
+        # Read current state
         clk = self.clk_pin.value()
         dt = self.dt_pin.value()
+        current_state = (clk << 1) | dt
 
-        if clk != self.last_clk:
-            if clk == 0:  # Falling edge on CLK
-                if dt == 1:
-                    self.position += 1
-                    delta = 1
-                else:
-                    self.position -= 1
-                    delta = -1
-            else:
-                delta = 0
-        else:
-            delta = 0
+        # Check for valid transition
+        delta = 0
+        transition = (self.last_state, current_state)
+        if transition in self.transitions:
+            delta = self.transitions[transition]
+            self.position += delta
 
-        self.last_clk = clk
+        self.last_state = current_state
         return delta
 
 
