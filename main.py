@@ -307,27 +307,138 @@ class PortalGun:
                 self.compositor.clear_animations()
                 print("Portal animations: cleared background animations")
 
-            # Simple portal effect: all pixels green during generate phase
+            # Portal throb effect during generate phase
             if state.phase == state.PHASE_GENERATE:
-                # All pixels to portal green
-                for i in range(Config.NUM_PIXELS):
-                    self.hardware.pixels.set_pixel(i, Config.COLOR_GREEN)
-            elif state.phase == state.PHASE_RAMPUP:
-                # Ramping up green
                 now = time.ticks_ms()
                 phase_elapsed = time.ticks_diff(now, state.phase_start_time) if state.phase_start_time else 0
-                t = min(1.0, phase_elapsed / Config.PORTAL_RAMPUP_DURATION_MS)
-                brightness = int(t * 100)
+
+                # Get throb extension (0-100%)
+                throb_extension = self._get_throb_extension(phase_elapsed)
+
+                center_pixel = Config.get_center_pixel()
+                max_distance = center_pixel  # Distance from center to edge
+
+                # Calculate throb reach (how far from center the foreground spreads)
+                throb_reach = (throb_extension / 100.0) * max_distance
+
                 for i in range(Config.NUM_PIXELS):
-                    self.hardware.pixels.set_pixel(i, (0, brightness, 0))
+                    # Calculate distance from center
+                    distance = abs(i - center_pixel)
+
+                    # Calculate foreground/background mix
+                    if throb_reach == 0:
+                        # No throb - only center pixel has foreground
+                        foreground_mix = 1.0 if distance == 0 else 0.0
+                    else:
+                        # Linear falloff from center to throb_reach
+                        foreground_mix = max(0.0, min(1.0, 1.0 - (distance / throb_reach)))
+
+                    # Mix background and foreground colors
+                    bg_r, bg_g, bg_b = Config.PORTAL_GENERATE_BG_COLOR
+                    fg_r, fg_g, fg_b = Config.PORTAL_GENERATE_FG_COLOR
+
+                    r = int(bg_r * (1 - foreground_mix) + fg_r * foreground_mix)
+                    g = int(bg_g * (1 - foreground_mix) + fg_g * foreground_mix)
+                    b = int(bg_b * (1 - foreground_mix) + fg_b * foreground_mix)
+
+                    self.hardware.pixels.set_pixel(i, (r, g, b))
+            elif state.phase == state.PHASE_RAMPUP:
+                # Per-pixel delayed ramp with flashing
+                now = time.ticks_ms()
+                phase_elapsed = time.ticks_diff(now, state.phase_start_time) if state.phase_start_time else 0
+                center_pixel = Config.get_center_pixel()
+
+                # Flash cycle: 10ms low + 20ms high = 30ms total
+                flash_cycle = Config.PORTAL_RAMPUP_FLASH_LOW_MS + Config.PORTAL_RAMPUP_FLASH_HIGH_MS
+                flash_in_cycle = phase_elapsed % flash_cycle
+                flash_multiplier = Config.PORTAL_RAMPUP_FLASH_MAX / 100.0  # High = 100%
+                if flash_in_cycle < Config.PORTAL_RAMPUP_FLASH_LOW_MS:
+                    flash_multiplier = Config.PORTAL_RAMPUP_FLASH_MIN / 100.0  # Low = 50%
+
+                for i in range(Config.NUM_PIXELS):
+                    # Calculate distance from center
+                    distance = abs(i - center_pixel)
+
+                    # Calculate when this pixel should start ramping
+                    pixel_start_delay = distance * Config.PORTAL_RAMPUP_PIXEL_DELAY_MS
+
+                    # Calculate how long this pixel has been ramping
+                    pixel_ramp_time = phase_elapsed - pixel_start_delay
+
+                    if pixel_ramp_time < 0:
+                        # Pixel hasn't started yet
+                        brightness = 0
+                    else:
+                        # Calculate ramp progress (0.0 to 1.0)
+                        ramp_progress = min(1.0, pixel_ramp_time / Config.PORTAL_RAMPUP_DURATION_MS)
+
+                        # Apply flash multiplier to current ramp level
+                        brightness = int(ramp_progress * flash_multiplier * Config.PORTAL_RAMPUP_CENTER_BRIGHTNESS)
+
+                    # Set pixel to green with calculated brightness
+                    r, g, b = Config.PORTAL_RAMPUP_CENTER_COLOR
+                    self.hardware.pixels.set_pixel(i, (
+                        int(r * brightness / 100),
+                        int(g * brightness / 100),
+                        int(b * brightness / 100)
+                    ))
             elif state.phase == state.PHASE_RAMPDOWN:
-                # Ramping down green
+                # Blend fading throb with fading-in background animations
                 now = time.ticks_ms()
                 phase_elapsed = time.ticks_diff(now, state.phase_start_time) if state.phase_start_time else 0
                 t = min(1.0, phase_elapsed / Config.PORTAL_RAMPDOWN_DURATION_MS)
-                brightness = int((1 - t) * 100)
+
+                # Throb opacity: 100% -> 0% linearly over full duration
+                throb_opacity = 1.0 - t
+
+                # Background opacity: 0% -> 100%, reaching 100% at halfway point
+                bg_opacity = min(1.0, t * 2.0)
+
+                # Throb extension: drops from max to 0% linearly
+                throb_extension = Config.PORTAL_GENERATE_THROB_MAX * (1.0 - t)
+
+                # Re-enable background animations for blending
+                if not self.background_animations_enabled:
+                    self.background_animations_enabled = True
+                    self.gentle_motion_manager.next_motion_time = time.ticks_ms()
+                    self.sparkle_manager.next_sparkle_time = time.ticks_ms()
+
+                # Update and get background animation pixels
+                self.gentle_motion_manager.update()
+                self.sparkle_manager.update()
+                self.compositor.update()
+                bg_pixels = self.compositor.get_composite()
+
+                # Calculate throb effect
+                center_pixel = Config.get_center_pixel()
+                max_distance = center_pixel
+                throb_reach = (throb_extension / 100.0) * max_distance
+
                 for i in range(Config.NUM_PIXELS):
-                    self.hardware.pixels.set_pixel(i, (0, brightness, 0))
+                    # Calculate throb color for this pixel
+                    distance = abs(i - center_pixel)
+
+                    if throb_reach == 0:
+                        foreground_mix = 1.0 if distance == 0 else 0.0
+                    else:
+                        foreground_mix = max(0.0, min(1.0, 1.0 - (distance / throb_reach)))
+
+                    bg_r, bg_g, bg_b = Config.PORTAL_GENERATE_BG_COLOR
+                    fg_r, fg_g, fg_b = Config.PORTAL_GENERATE_FG_COLOR
+
+                    throb_r = int(bg_r * (1 - foreground_mix) + fg_r * foreground_mix)
+                    throb_g = int(bg_g * (1 - foreground_mix) + fg_g * foreground_mix)
+                    throb_b = int(bg_b * (1 - foreground_mix) + fg_b * foreground_mix)
+
+                    # Get background animation color
+                    anim_r, anim_g, anim_b = bg_pixels[i]
+
+                    # Blend throb and background based on their opacities
+                    final_r = int(throb_r * throb_opacity + anim_r * bg_opacity)
+                    final_g = int(throb_g * throb_opacity + anim_g * bg_opacity)
+                    final_b = int(throb_b * throb_opacity + anim_b * bg_opacity)
+
+                    self.hardware.pixels.set_pixel(i, (final_r, final_g, final_b))
             else:
                 # PREPARE or complete - off
                 for i in range(Config.NUM_PIXELS):
@@ -344,6 +455,35 @@ class PortalGun:
         for i, color in enumerate(pixel_colors):
             self.hardware.pixels.set_pixel(i, color)
         self.hardware.pixels.write()
+
+    def _get_throb_extension(self, phase_elapsed):
+        """
+        Calculate throb extension percentage (0-100) based on time in GENERATE phase
+
+        Args:
+            phase_elapsed: Time elapsed in GENERATE phase (ms)
+
+        Returns:
+            Throb extension as percentage (0-100)
+        """
+        if phase_elapsed < Config.PORTAL_GENERATE_THROB_INITIAL_MS:
+            # Initial ramp: 0% to 90% in 100ms
+            t = phase_elapsed / Config.PORTAL_GENERATE_THROB_INITIAL_MS
+            return t * Config.PORTAL_GENERATE_THROB_MAX
+        else:
+            # Oscillate between 90% and 40%
+            # Cycle time: 80ms down + 40ms up = 120ms
+            cycle_time = Config.PORTAL_GENERATE_THROB_DOWN_MS + Config.PORTAL_GENERATE_THROB_UP_MS
+            elapsed_in_cycle = (phase_elapsed - Config.PORTAL_GENERATE_THROB_INITIAL_MS) % cycle_time
+
+            if elapsed_in_cycle < Config.PORTAL_GENERATE_THROB_DOWN_MS:
+                # Going down: 90% to 40%
+                t = elapsed_in_cycle / Config.PORTAL_GENERATE_THROB_DOWN_MS
+                return Config.PORTAL_GENERATE_THROB_MAX - t * (Config.PORTAL_GENERATE_THROB_MAX - Config.PORTAL_GENERATE_THROB_MIN)
+            else:
+                # Going up: 40% to 90%
+                t = (elapsed_in_cycle - Config.PORTAL_GENERATE_THROB_DOWN_MS) / Config.PORTAL_GENERATE_THROB_UP_MS
+                return Config.PORTAL_GENERATE_THROB_MIN + t * (Config.PORTAL_GENERATE_THROB_MAX - Config.PORTAL_GENERATE_THROB_MIN)
 
     def _update_leds(self):
         """Update front LEDs based on current state"""
@@ -367,8 +507,22 @@ class PortalGun:
                 t = min(1.0, phase_elapsed / Config.PORTAL_RAMPUP_DURATION_MS)
                 brightness = int(t * Config.PORTAL_GENERATE_LED_BRIGHTNESS)
             elif state.phase == state.PHASE_GENERATE:
-                # Full brightness (with oscillation TODO)
-                brightness = Config.PORTAL_GENERATE_LED_BRIGHTNESS
+                # Oscillate with throb, plus noise
+                throb = self._get_throb_extension(phase_elapsed)
+
+                # Map throb extension (40-90%) to LED brightness (50-100%)
+                # throb=40 -> brightness=50, throb=90 -> brightness=100
+                throb_range = Config.PORTAL_GENERATE_THROB_MAX - Config.PORTAL_GENERATE_THROB_MIN
+                led_range = Config.PORTAL_GENERATE_LED_OSC_MAX - Config.PORTAL_GENERATE_LED_OSC_MIN
+                base_brightness = Config.PORTAL_GENERATE_LED_OSC_MIN + ((throb - Config.PORTAL_GENERATE_THROB_MIN) / throb_range) * led_range
+
+                # Add noise: ±20% at 20Hz (50ms period)
+                import random
+                noise_cycle = int(phase_elapsed / (1000 / Config.PORTAL_GENERATE_LED_NOISE_HZ))
+                random.seed(noise_cycle)
+                noise = random.uniform(-Config.PORTAL_GENERATE_LED_NOISE, Config.PORTAL_GENERATE_LED_NOISE)
+
+                brightness = int(max(0, min(100, base_brightness + noise)))
             elif state.phase == state.PHASE_RAMPDOWN:
                 # Ramp down to 0% over 2 seconds
                 t = min(1.0, phase_elapsed / Config.PORTAL_RAMPDOWN_DURATION_MS)
