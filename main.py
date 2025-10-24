@@ -243,21 +243,23 @@ class PortalGun:
             final_code = str(self.state_machine.universe_code)
 
             if state.phase == state.PHASE_PREPARE:
-                # Flash universe code 3 times (50ms off, 100ms on), then solid
-                flash_cycle = 150  # 50ms off + 100ms on
-                flash_num = phase_elapsed // flash_cycle
-                if flash_num >= Config.PORTAL_PREPARE_FLASHES:
-                    # After 3 flashes, show solid
-                    self.hardware.display.show_text(final_code)
+                # Scroll code off to the right, then blank
+                half_duration = Config.PORTAL_PREPARE_DURATION_MS // 2
+
+                if phase_elapsed < half_duration:
+                    # First half: scroll right off screen
+                    # Divide first half into 5 steps (one per shift position)
+                    scroll_step = phase_elapsed // (half_duration // 5)
+                    scroll_step = min(scroll_step, 4)  # Max 4 shifts (to fully clear)
+
+                    # Build scrolled string: shift right by adding spaces on left
+                    display_str = (" " * scroll_step) + final_code
+                    # Truncate to 4 characters (removing from right as we scroll)
+                    display_str = display_str[:4]
+                    self.hardware.display.show_text(display_str)
                 else:
-                    # Within flash cycle
-                    in_cycle = phase_elapsed % flash_cycle
-                    if in_cycle < Config.PORTAL_PREPARE_FLASH_OFF_MS:
-                        # Off period
-                        self.hardware.display.clear()
-                    else:
-                        # On period
-                        self.hardware.display.show_text(final_code)
+                    # Second half: blank display
+                    self.hardware.display.clear()
 
             elif state.phase == state.PHASE_RAMPUP:
                 # Cycle through pre-generated random sequences every 100ms
