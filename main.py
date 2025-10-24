@@ -71,6 +71,7 @@ class PortalGun:
 
                 # Handle each event
                 for event in events:
+                    print(f"Event: {event.type}, State: {type(self.state_machine.current_state).__name__}, Code: {self.state_machine.universe_code}")
                     self.state_machine.handle_input(event)
                     # Reset idle timer on any input (except idle timeout itself)
                     if event.type != 'idle_timeout':
@@ -90,6 +91,10 @@ class PortalGun:
 
                 # Small delay to prevent CPU spinning
                 time.sleep_ms(10)
+
+                idle_elapsed = time.ticks_diff(now, self.input_handler.last_activity_time)
+                if idle_elapsed % 10000 < 20:  # Print every ~10 seconds
+                    print(f"Idle: {idle_elapsed}ms")      
 
             except KeyboardInterrupt:
                 print("\\nShutdown requested")
