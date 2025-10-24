@@ -168,7 +168,7 @@ class PortalGeneratingState(State):
 
     def update(self):
         """Update portal generation"""
-        if self.start_time is None:
+        if self.start_time is None or self.phase_start_time is None:
             return None
 
         now = time.ticks_ms()
