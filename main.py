@@ -233,12 +233,41 @@ class PortalGun:
                 self.compositor.clear_animations()
 
         elif isinstance(state, PortalGeneratingState):
-            # Portal animation (simplified - just show something)
-            # TODO: Implement full portal animation phases
+            # Portal animation (simplified - basic effect for now)
+            # TODO: Implement full portal animation phases (throb, etc.)
             if self.background_animations_enabled:
                 self.background_animations_enabled = False
                 self.compositor.clear_animations()
                 print("Portal animations: cleared background animations")
+
+            # Simple portal effect: all pixels green during generate phase
+            if state.phase == state.PHASE_GENERATE:
+                # All pixels to portal green
+                for i in range(Config.NUM_PIXELS):
+                    self.hardware.pixels.set_pixel(i, Config.COLOR_GREEN)
+            elif state.phase == state.PHASE_RAMPUP:
+                # Ramping up green
+                now = time.ticks_ms()
+                phase_elapsed = time.ticks_diff(now, state.phase_start_time) if state.phase_start_time else 0
+                t = min(1.0, phase_elapsed / Config.PORTAL_RAMPUP_DURATION_MS)
+                brightness = int(t * 100)
+                for i in range(Config.NUM_PIXELS):
+                    self.hardware.pixels.set_pixel(i, (0, brightness, 0))
+            elif state.phase == state.PHASE_RAMPDOWN:
+                # Ramping down green
+                now = time.ticks_ms()
+                phase_elapsed = time.ticks_diff(now, state.phase_start_time) if state.phase_start_time else 0
+                t = min(1.0, phase_elapsed / Config.PORTAL_RAMPDOWN_DURATION_MS)
+                brightness = int((1 - t) * 100)
+                for i in range(Config.NUM_PIXELS):
+                    self.hardware.pixels.set_pixel(i, (0, brightness, 0))
+            else:
+                # PREPARE or complete - off
+                for i in range(Config.NUM_PIXELS):
+                    self.hardware.pixels.set_pixel(i, (0, 0, 0))
+
+            self.hardware.pixels.write()
+            return  # Don't process normal compositor
 
         # Update all active animations
         self.compositor.update()
@@ -258,14 +287,33 @@ class PortalGun:
 
         # LEDs are only used during portal generation
         if isinstance(state, PortalGeneratingState):
-            # Simple: turn LEDs on during portal generation
-            # TODO: Implement phase-specific LED behavior
-            self.hardware.leds.set_all_brightness(50)
-            # Debug
-            if time.ticks_ms() % 500 < 20:
+            # Phase-specific LED behavior
+            now = time.ticks_ms()
+            phase_elapsed = time.ticks_diff(now, state.phase_start_time) if state.phase_start_time else 0
+            brightness = 0
+
+            if state.phase == state.PHASE_PREPARE:
+                # LEDs off during prepare
+                brightness = 0
+            elif state.phase == state.PHASE_RAMPUP:
+                # Ramp up to 100% over 1 second
+                t = min(1.0, phase_elapsed / Config.PORTAL_RAMPUP_DURATION_MS)
+                brightness = int(t * Config.PORTAL_GENERATE_LED_BRIGHTNESS)
+            elif state.phase == state.PHASE_GENERATE:
+                # Full brightness (with oscillation TODO)
+                brightness = Config.PORTAL_GENERATE_LED_BRIGHTNESS
+            elif state.phase == state.PHASE_RAMPDOWN:
+                # Ramp down to 0% over 2 seconds
+                t = min(1.0, phase_elapsed / Config.PORTAL_RAMPDOWN_DURATION_MS)
+                brightness = int((1 - t) * Config.PORTAL_GENERATE_LED_BRIGHTNESS)
+
+            self.hardware.leds.set_all_brightness(brightness)
+
+            # Debug (occasionally)
+            if now % 500 < 20:
                 phase_names = ['PREPARE', 'RAMPUP', 'GENERATE', 'RAMPDOWN', 'COMPLETE']
                 phase_name = phase_names[state.phase] if state.phase < len(phase_names) else 'UNKNOWN'
-                print(f"Portal LEDs: phase={phase_name}, brightness=50%")
+                print(f"Portal LEDs: phase={phase_name}, brightness={brightness}%")
         else:
             # LEDs off in other states (unless showing error codes)
             if not self.hardware.has_errors():
