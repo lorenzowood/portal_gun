@@ -337,18 +337,30 @@ class PortalGun:
                 self.compositor.clear_animations()
 
         elif isinstance(state, PortalGeneratingState):
-            # Portal animation (simplified - basic effect for now)
-            # TODO: Implement full portal animation phases (throb, etc.)
-            if self.background_animations_enabled:
-                self.background_animations_enabled = False
-                self.compositor.clear_animations()
-                print("Portal animations: cleared background animations")
+            # Keep background animations running - portal effects blend on top
+            if not self.background_animations_enabled:
+                self.background_animations_enabled = True
+                self.gentle_motion_manager.next_motion_time = time.ticks_ms()
+                self.sparkle_manager.next_sparkle_time = time.ticks_ms()
 
-            # Portal throb effect during generate phase
-            if state.phase == state.PHASE_GENERATE:
-                now = time.ticks_ms()
-                phase_elapsed = time.ticks_diff(now, state.phase_start_time) if state.phase_start_time else 0
+            # Update background animations
+            self.gentle_motion_manager.update()
+            self.sparkle_manager.update()
 
+            # Get background animation colors
+            self.compositor.update()
+            bg_pixels = self.compositor.get_composite()
+
+            # Portal effects blend on top of background
+            now = time.ticks_ms()
+            phase_elapsed = time.ticks_diff(now, state.phase_start_time) if state.phase_start_time else 0
+
+            if state.phase == state.PHASE_PREPARE:
+                # Just show background animations during prepare
+                for i in range(Config.NUM_PIXELS):
+                    self.hardware.pixels.set_pixel(i, bg_pixels[i])
+
+            elif state.phase == state.PHASE_GENERATE:
                 # Get throb extension (0-100%)
                 throb_extension = self._get_throb_extension(phase_elapsed)
 
@@ -362,7 +374,7 @@ class PortalGun:
                     # Calculate distance from center
                     distance = abs(i - center_pixel)
 
-                    # Calculate foreground/background mix
+                    # Calculate foreground/background mix for throb
                     if throb_reach == 0:
                         # No throb - only center pixel has foreground
                         foreground_mix = 1.0 if distance == 0 else 0.0
@@ -370,19 +382,23 @@ class PortalGun:
                         # Linear falloff from center to throb_reach
                         foreground_mix = max(0.0, min(1.0, 1.0 - (distance / throb_reach)))
 
-                    # Mix background and foreground colors
-                    bg_r, bg_g, bg_b = Config.PORTAL_GENERATE_BG_COLOR
-                    fg_r, fg_g, fg_b = Config.PORTAL_GENERATE_FG_COLOR
+                    # Mix throb background and foreground colors
+                    throb_bg_r, throb_bg_g, throb_bg_b = Config.PORTAL_GENERATE_BG_COLOR
+                    throb_fg_r, throb_fg_g, throb_fg_b = Config.PORTAL_GENERATE_FG_COLOR
 
-                    r = int(bg_r * (1 - foreground_mix) + fg_r * foreground_mix)
-                    g = int(bg_g * (1 - foreground_mix) + fg_g * foreground_mix)
-                    b = int(bg_b * (1 - foreground_mix) + fg_b * foreground_mix)
+                    throb_r = int(throb_bg_r * (1 - foreground_mix) + throb_fg_r * foreground_mix)
+                    throb_g = int(throb_bg_g * (1 - foreground_mix) + throb_fg_g * foreground_mix)
+                    throb_b = int(throb_bg_b * (1 - foreground_mix) + throb_fg_b * foreground_mix)
 
-                    self.hardware.pixels.set_pixel(i, (r, g, b))
+                    # Blend throb effect over background animation (additive for brighter effect)
+                    anim_r, anim_g, anim_b = bg_pixels[i]
+                    final_r = min(100, anim_r + throb_r)
+                    final_g = min(100, anim_g + throb_g)
+                    final_b = min(100, anim_b + throb_b)
+
+                    self.hardware.pixels.set_pixel(i, (final_r, final_g, final_b))
             elif state.phase == state.PHASE_RAMPUP:
-                # Per-pixel delayed ramp with flashing
-                now = time.ticks_ms()
-                phase_elapsed = time.ticks_diff(now, state.phase_start_time) if state.phase_start_time else 0
+                # Per-pixel delayed ramp with flashing, blended over background
                 center_pixel = Config.get_center_pixel()
 
                 # Flash cycle: 10ms low + 20ms high = 30ms total
@@ -403,7 +419,7 @@ class PortalGun:
                     pixel_ramp_time = phase_elapsed - pixel_start_delay
 
                     if pixel_ramp_time < 0:
-                        # Pixel hasn't started yet
+                        # Pixel hasn't started yet - just show background
                         brightness = 0
                     else:
                         # Calculate ramp progress (0.0 to 1.0)
@@ -412,17 +428,21 @@ class PortalGun:
                         # Apply flash multiplier to current ramp level
                         brightness = int(ramp_progress * flash_multiplier * Config.PORTAL_RAMPUP_CENTER_BRIGHTNESS)
 
-                    # Set pixel to green with calculated brightness
-                    r, g, b = Config.PORTAL_RAMPUP_CENTER_COLOR
-                    self.hardware.pixels.set_pixel(i, (
-                        int(r * brightness / 100),
-                        int(g * brightness / 100),
-                        int(b * brightness / 100)
-                    ))
+                    # Calculate green ramp color
+                    ramp_r, ramp_g, ramp_b = Config.PORTAL_RAMPUP_CENTER_COLOR
+                    ramp_r = int(ramp_r * brightness / 100)
+                    ramp_g = int(ramp_g * brightness / 100)
+                    ramp_b = int(ramp_b * brightness / 100)
+
+                    # Blend with background (additive)
+                    anim_r, anim_g, anim_b = bg_pixels[i]
+                    final_r = min(100, anim_r + ramp_r)
+                    final_g = min(100, anim_g + ramp_g)
+                    final_b = min(100, anim_b + ramp_b)
+
+                    self.hardware.pixels.set_pixel(i, (final_r, final_g, final_b))
             elif state.phase == state.PHASE_RAMPDOWN:
-                # Blend fading throb with fading-in background animations
-                now = time.ticks_ms()
-                phase_elapsed = time.ticks_diff(now, state.phase_start_time) if state.phase_start_time else 0
+                # Blend fading throb with background animations
                 t = min(1.0, phase_elapsed / Config.PORTAL_RAMPDOWN_DURATION_MS)
 
                 # Throb opacity: 100% -> 0% linearly over full duration
@@ -433,18 +453,6 @@ class PortalGun:
 
                 # Throb extension: drops from max to 0% linearly
                 throb_extension = Config.PORTAL_GENERATE_THROB_MAX * (1.0 - t)
-
-                # Re-enable background animations for blending
-                if not self.background_animations_enabled:
-                    self.background_animations_enabled = True
-                    self.gentle_motion_manager.next_motion_time = time.ticks_ms()
-                    self.sparkle_manager.next_sparkle_time = time.ticks_ms()
-
-                # Update and get background animation pixels
-                self.gentle_motion_manager.update()
-                self.sparkle_manager.update()
-                self.compositor.update()
-                bg_pixels = self.compositor.get_composite()
 
                 # Calculate throb effect
                 center_pixel = Config.get_center_pixel()
@@ -477,9 +485,9 @@ class PortalGun:
 
                     self.hardware.pixels.set_pixel(i, (final_r, final_g, final_b))
             else:
-                # PREPARE or complete - off
+                # COMPLETE or unknown - just show background
                 for i in range(Config.NUM_PIXELS):
-                    self.hardware.pixels.set_pixel(i, (0, 0, 0))
+                    self.hardware.pixels.set_pixel(i, bg_pixels[i])
 
             self.hardware.pixels.write()
             return  # Don't process normal compositor
