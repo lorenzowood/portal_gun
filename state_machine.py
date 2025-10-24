@@ -174,6 +174,10 @@ class PortalGeneratingState(State):
 
         now = time.ticks_ms()
 
+        # Debug: show we're updating
+        if now % 1000 < 20:
+            print(f"Portal update: phase={self.phase}, elapsed_total={time.ticks_diff(now, self.start_time)}ms")
+
         # Process all completed phases (in case update() is called after long delay)
         while self.phase < self.PHASE_COMPLETE:
             phase_elapsed = time.ticks_diff(now, self.phase_start_time)
@@ -193,7 +197,9 @@ class PortalGeneratingState(State):
                     phase_complete = True
 
             if phase_complete:
+                old_phase = self.phase
                 self.phase += 1
+                print(f">>> Phase complete! {old_phase} -> {self.phase}, phase_elapsed={phase_elapsed}ms")
                 # Advance phase start time by phase duration
                 if self.phase == self.PHASE_RAMPUP:
                     self.phase_start_time = time.ticks_add(
@@ -216,6 +222,9 @@ class PortalGeneratingState(State):
                 # Current phase not complete yet
                 break
 
+        # If we get here, all phases are complete or current phase not done
+        if self.phase >= self.PHASE_COMPLETE:
+            print(f"!!! Portal should be complete but didn't return! phase={self.phase}")
         return None
 
 
