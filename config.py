@@ -110,6 +110,9 @@ class Config:
     PORTAL_RAMPDOWN_DISPLAY_ON_MS = 250
     PORTAL_RAMPDOWN_DISPLAY_OFF_MS = 50
 
+    # Display animation
+    PORTAL_DISPLAY_CYCLE_MS = 100  # How fast to cycle random chars in GENERATE phase
+
     # ========== UNIVERSE CODE ==========
 
     UNIVERSE_CODE_DEFAULT = "C137"  # Initial universe code

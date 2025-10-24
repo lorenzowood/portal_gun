@@ -89,8 +89,8 @@ class PortalGun:
                 # Update LEDs based on current state
                 self._update_leds()
 
-                # Small delay to prevent CPU spinning
-                time.sleep_ms(10)
+                # Small delay to prevent CPU spinning (3ms for smoother animations)
+                time.sleep_ms(3)
 
                 idle_elapsed = time.ticks_diff(now, self.input_handler.last_activity_time)
                 if idle_elapsed % 10000 < 20:  # Print every ~10 seconds
@@ -198,15 +198,82 @@ class PortalGun:
             self.hardware.display.show_text(display_str)
 
         elif isinstance(state, PortalGeneratingState):
-            # Show universe code (would implement phase-specific display later)
-            # TODO: Implement phase-specific display
-            code = str(self.state_machine.universe_code)
-            self.hardware.display.show_text(code)
-            # Debug: show what phase we're in occasionally
-            if time.ticks_ms() % 500 < 20:
-                phase_names = ['PREPARE', 'RAMPUP', 'GENERATE', 'RAMPDOWN', 'COMPLETE']
-                phase_name = phase_names[state.phase] if state.phase < len(phase_names) else 'UNKNOWN'
-                print(f"Portal display update: phase={phase_name}, code={code}")
+            # Phase-specific display animations
+            now = time.ticks_ms()
+            phase_elapsed = time.ticks_diff(now, state.phase_start_time) if state.phase_start_time else 0
+            final_code = str(self.state_machine.universe_code)
+
+            if state.phase == state.PHASE_PREPARE:
+                # Flash universe code 3 times (50ms off, 100ms on), then solid
+                flash_cycle = 150  # 50ms off + 100ms on
+                flash_num = phase_elapsed // flash_cycle
+                if flash_num >= Config.PORTAL_PREPARE_FLASHES:
+                    # After 3 flashes, show solid
+                    self.hardware.display.show_text(final_code)
+                else:
+                    # Within flash cycle
+                    in_cycle = phase_elapsed % flash_cycle
+                    if in_cycle < Config.PORTAL_PREPARE_FLASH_OFF_MS:
+                        # Off period
+                        self.hardware.display.clear()
+                    else:
+                        # On period
+                        self.hardware.display.show_text(final_code)
+
+            elif state.phase == state.PHASE_RAMPUP:
+                # Random letters and digits every 100ms
+                import random
+                cycle_count = phase_elapsed // Config.PORTAL_RAMPUP_DISPLAY_UPDATE_MS
+                random.seed(cycle_count)  # Deterministic based on time
+                # First char: random letter A-F
+                letter = random.choice('ABCDEF')
+                # Other chars: random digits
+                d1 = random.randint(0, 9)
+                d2 = random.randint(0, 9)
+                d3 = random.randint(0, 9)
+                display_str = f"{letter}{d1}{d2}{d3}"
+                self.hardware.display.show_text(display_str)
+
+            elif state.phase == state.PHASE_GENERATE:
+                # Progressive lock-in of characters
+                # Divide phase into 4 equal parts (one per character)
+                lock_interval = Config.PORTAL_GENERATE_DURATION_MS / 4
+                num_locked = int(phase_elapsed / lock_interval)
+                if num_locked > 4:
+                    num_locked = 4
+
+                # Build display string
+                import random
+                cycle_count = phase_elapsed // Config.PORTAL_DISPLAY_CYCLE_MS
+                random.seed(cycle_count)
+                display_str = ""
+                for i in range(4):
+                    if i < num_locked:
+                        # Locked - show actual character
+                        display_str += final_code[i]
+                    else:
+                        # Unlocked - random cycling
+                        if i == 0:
+                            display_str += random.choice('ABCDEF')
+                        else:
+                            display_str += str(random.randint(0, 9))
+
+                self.hardware.display.show_text(display_str)
+
+            elif state.phase == state.PHASE_RAMPDOWN:
+                # Flash final code (250ms on, 50ms off)
+                flash_cycle = Config.PORTAL_RAMPDOWN_DISPLAY_ON_MS + Config.PORTAL_RAMPDOWN_DISPLAY_OFF_MS
+                in_cycle = phase_elapsed % flash_cycle
+                if in_cycle < Config.PORTAL_RAMPDOWN_DISPLAY_ON_MS:
+                    # On period
+                    self.hardware.display.show_text(final_code)
+                else:
+                    # Off period
+                    self.hardware.display.clear()
+
+            else:
+                # COMPLETE or unknown - show code
+                self.hardware.display.show_text(final_code)
 
     def _update_animations(self):
         """Update neopixel animations based on current state"""
