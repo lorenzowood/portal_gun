@@ -223,7 +223,7 @@ class NeopixelController:
 
 
 class EncoderReader:
-    """Read rotary encoder rotation with quadrature decoding"""
+    """Read rotary encoder rotation - same logic as encoder_test.py"""
 
     def __init__(self, clk_pin, dt_pin):
         """
@@ -235,45 +235,38 @@ class EncoderReader:
         """
         self.clk_pin = Pin(clk_pin, Pin.IN, Pin.PULL_UP)
         self.dt_pin = Pin(dt_pin, Pin.IN, Pin.PULL_UP)
-
-        # Quadrature state tracking
-        self.last_state = (self.clk_pin.value() << 1) | self.dt_pin.value()
+        self.last_clk_state = self.clk_pin.value()
         self.position = 0
-
-        # State transition table for quadrature encoding
-        # Clockwise:  00 -> 01 -> 11 -> 10 -> 00
-        # Counter-CW: 00 -> 10 -> 11 -> 01 -> 00
-        self.transitions = {
-            (0b00, 0b01): 1,   # CW
-            (0b01, 0b11): 1,   # CW
-            (0b11, 0b10): 1,   # CW
-            (0b10, 0b00): 1,   # CW
-            (0b00, 0b10): -1,  # CCW
-            (0b10, 0b11): -1,  # CCW
-            (0b11, 0b01): -1,  # CCW
-            (0b01, 0b00): -1,  # CCW
-        }
 
     def read(self):
         """
         Read encoder and return delta since last read
 
+        Uses same logic as hardware_tests/encoder_test.py:
+        - Detects CLK falling edge (HIGH to LOW)
+        - Reads DT state at that moment
+        - DT=0 means clockwise, DT=1 means counter-clockwise
+
         Returns:
             Delta: +1 for clockwise, -1 for counter-clockwise, 0 for no change
         """
-        # Read current state
-        clk = self.clk_pin.value()
-        dt = self.dt_pin.value()
-        current_state = (clk << 1) | dt
+        clk_state = self.clk_pin.value()
+        dt_state = self.dt_pin.value()
 
-        # Check for valid transition
         delta = 0
-        transition = (self.last_state, current_state)
-        if transition in self.transitions:
-            delta = self.transitions[transition]
-            self.position += delta
 
-        self.last_state = current_state
+        # If CLK changed from HIGH to LOW (falling edge)
+        if self.last_clk_state == 1 and clk_state == 0:
+            if dt_state == 0:
+                # Clockwise
+                delta = 1
+                self.position += 1
+            else:
+                # Counter-clockwise
+                delta = -1
+                self.position -= 1
+
+        self.last_clk_state = clk_state
         return delta
 
 
