@@ -165,6 +165,7 @@ class PortalGeneratingState(State):
         self.phase = self.PHASE_PREPARE
         self.start_time = time.ticks_ms()
         self.phase_start_time = self.start_time
+        print(f"Portal generation started - PHASE_PREPARE")
 
     def update(self):
         """Update portal generation"""
@@ -197,14 +198,19 @@ class PortalGeneratingState(State):
                 if self.phase == self.PHASE_RAMPUP:
                     self.phase_start_time = time.ticks_add(
                         self.phase_start_time, Config.PORTAL_PREPARE_DURATION_MS)
+                    print(f"Portal phase: PREPARE -> RAMPUP (elapsed={phase_elapsed}ms)")
                 elif self.phase == self.PHASE_GENERATE:
                     self.phase_start_time = time.ticks_add(
                         self.phase_start_time, Config.PORTAL_RAMPUP_DURATION_MS)
+                    print(f"Portal phase: RAMPUP -> GENERATE (elapsed={phase_elapsed}ms)")
                 elif self.phase == self.PHASE_RAMPDOWN:
                     self.phase_start_time = time.ticks_add(
                         self.phase_start_time, Config.PORTAL_GENERATE_DURATION_MS)
+                    print(f"Portal phase: GENERATE -> RAMPDOWN (elapsed={phase_elapsed}ms)")
                 elif self.phase == self.PHASE_COMPLETE:
                     # All phases complete, return to operation
+                    print(f"Portal phase: RAMPDOWN -> COMPLETE (elapsed={phase_elapsed}ms)")
+                    print("Portal generation complete, returning to operation mode")
                     return OperationState(self.machine)
             else:
                 # Current phase not complete yet

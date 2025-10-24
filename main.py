@@ -199,7 +199,14 @@ class PortalGun:
 
         elif isinstance(state, PortalGeneratingState):
             # Show universe code (would implement phase-specific display later)
-            self.hardware.display.show_text(str(self.state_machine.universe_code))
+            # TODO: Implement phase-specific display
+            code = str(self.state_machine.universe_code)
+            self.hardware.display.show_text(code)
+            # Debug: show what phase we're in occasionally
+            if time.ticks_ms() % 500 < 20:
+                phase_names = ['PREPARE', 'RAMPUP', 'GENERATE', 'RAMPDOWN', 'COMPLETE']
+                phase_name = phase_names[state.phase] if state.phase < len(phase_names) else 'UNKNOWN'
+                print(f"Portal display update: phase={phase_name}, code={code}")
 
     def _update_animations(self):
         """Update neopixel animations based on current state"""
@@ -231,6 +238,7 @@ class PortalGun:
             if self.background_animations_enabled:
                 self.background_animations_enabled = False
                 self.compositor.clear_animations()
+                print("Portal animations: cleared background animations")
 
         # Update all active animations
         self.compositor.update()
@@ -253,6 +261,11 @@ class PortalGun:
             # Simple: turn LEDs on during portal generation
             # TODO: Implement phase-specific LED behavior
             self.hardware.leds.set_all_brightness(50)
+            # Debug
+            if time.ticks_ms() % 500 < 20:
+                phase_names = ['PREPARE', 'RAMPUP', 'GENERATE', 'RAMPDOWN', 'COMPLETE']
+                phase_name = phase_names[state.phase] if state.phase < len(phase_names) else 'UNKNOWN'
+                print(f"Portal LEDs: phase={phase_name}, brightness=50%")
         else:
             # LEDs off in other states (unless showing error codes)
             if not self.hardware.has_errors():
