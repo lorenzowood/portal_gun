@@ -30,4 +30,4 @@ Thumbs.db
 *.old
 
 # Open SCAD
-.stl
+*.stl
