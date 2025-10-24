@@ -223,11 +223,11 @@ class NeopixelController:
 
 
 class EncoderReader:
-    """Read rotary encoder rotation - same logic as encoder_test.py"""
+    """Read rotary encoder rotation using interrupts like encoder_test.py"""
 
     def __init__(self, clk_pin, dt_pin):
         """
-        Initialize encoder reader
+        Initialize encoder reader with interrupt handling
 
         Args:
             clk_pin: Clock pin number
@@ -238,36 +238,44 @@ class EncoderReader:
         self.last_clk_state = self.clk_pin.value()
         self.position = 0
 
-    def read(self):
+        # Event queue - buffered encoder changes
+        self.events = []
+
+        # Set up interrupt on CLK pin (both edges)
+        self.clk_pin.irq(trigger=Pin.IRQ_FALLING | Pin.IRQ_RISING, handler=self._encoder_changed)
+
+    def _encoder_changed(self, pin):
         """
-        Read encoder and return delta since last read
+        Interrupt handler - called when CLK pin changes
 
-        Uses same logic as hardware_tests/encoder_test.py:
-        - Detects CLK falling edge (HIGH to LOW)
-        - Reads DT state at that moment
-        - DT=0 means clockwise, DT=1 means counter-clockwise
-
-        Returns:
-            Delta: +1 for clockwise, -1 for counter-clockwise, 0 for no change
+        This is the same logic as encoder_test.py
         """
         clk_state = self.clk_pin.value()
         dt_state = self.dt_pin.value()
-
-        delta = 0
 
         # If CLK changed from HIGH to LOW (falling edge)
         if self.last_clk_state == 1 and clk_state == 0:
             if dt_state == 0:
                 # Clockwise
-                delta = 1
+                self.events.append(1)
                 self.position += 1
             else:
                 # Counter-clockwise
-                delta = -1
+                self.events.append(-1)
                 self.position -= 1
 
         self.last_clk_state = clk_state
-        return delta
+
+    def read(self):
+        """
+        Read buffered encoder events
+
+        Returns:
+            Delta: +1 for clockwise, -1 for counter-clockwise, 0 for no change
+        """
+        if self.events:
+            return self.events.pop(0)
+        return 0
 
 
 class ButtonReader:
