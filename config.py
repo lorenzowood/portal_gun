@@ -10,15 +10,15 @@ class Config:
     PIN_LED_1 = 13  # Active-LOW
     PIN_LED_2 = 14  # Active-LOW
     PIN_LED_3 = 15  # Active-LOW
-    PIN_NEOPIXEL = 16
-    PIN_DISPLAY_DIO = 6
-    PIN_DISPLAY_CLK = 7
+    PIN_NEOPIXEL = 18
+    PIN_DISPLAY_DIO = 7
+    PIN_DISPLAY_CLK = 8
     PIN_ENCODER_CLK = 10
     PIN_ENCODER_DT = 11
     PIN_ENCODER_SW = 12
 
     # Hardware parameters
-    NUM_PIXELS = 15  # Number of neopixels in strip
+    NUM_PIXELS = 20  # Number of neopixels in strip
     LEDS_ACTIVE_LOW = True  # LEDs turn on when pin is LOW
 
     # ========== TIMING ==========
@@ -42,23 +42,23 @@ class Config:
 
     # Colors as (R, G, B) tuples with brightness 0-100%
     COLOR_GREEN = (0, 100, 0)
-    COLOR_BLUE_WHITE = (94, 94, 100)  # 240,240,255 scaled to percentage
-    COLOR_PORTAL_BACKGROUND = (0, 75, 0)  # 0,192,0 scaled
+    COLOR_BLUE_WHITE = (40, 100, 40)  # 240,240,255 scaled to percentage
+    COLOR_PORTAL_BACKGROUND = (0, 50, 0)  # 0,192,0 scaled
 
     # ========== BACKGROUND ANIMATIONS ==========
 
     # Gentle motion effect
-    GENTLE_MOTION_MAX_BRIGHTNESS = 50  # Percent
+    GENTLE_MOTION_MAX_BRIGHTNESS = 30  # Percent
     GENTLE_MOTION_COLOR = COLOR_GREEN
     GENTLE_MOTION_RAMP_UP_MS = 3000
     GENTLE_MOTION_HOLD_MS = 1000
     GENTLE_MOTION_RAMP_DOWN_MS = 3000
-    GENTLE_MOTION_DECAY_PIXELS = 2  # Pixels either side affected
-    GENTLE_MOTION_DECAY_RATE = 0.5  # 50% brightness decrease per pixel
+    GENTLE_MOTION_DECAY_PIXELS = 4  # Pixels either side affected
+    GENTLE_MOTION_DECAY_RATE = 0.6  # 50% brightness decrease per pixel
     GENTLE_MOTION_INTERVAL_MS = 5000  # Time between starting new effects
 
     # Sparkle effect
-    SPARKLE_MAX_BRIGHTNESS = 100  # Percent
+    SPARKLE_MAX_BRIGHTNESS = 80  # Percent
     SPARKLE_COLOR = COLOR_BLUE_WHITE
     SPARKLE_RAMP_UP_MS = 20
     SPARKLE_HOLD_MS = 0
