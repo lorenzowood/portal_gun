@@ -1,0 +1,75 @@
+Portal gun plan
+
+Software
+[X] Test Claude’s effort
+[X] Fix it
+-- Some tests passed in Python but failed in MicroPython on the Pi -- notably more sophisticated regex
+-- Could do with MicroPython on desktop for running more accurate tests
+[X] Signed off and loaded onto Pi
+
+Mounting optical encoder
+[X] Review candidate design
+[X] Refine if necessary
+[X] Final 3D prints produced
+
+Mounting the display
+[X] Design something
+[X] Print it
+[X] Test it
+[X] Refine if necessary
+[X] Final 3D prints produced
+
+Mounting the LEDs
+[X] Design black front piece
+[X] Print it
+[X] Test it
+[X] Refine if necessary
+[X] Final 3D prints produced
+
+Mounting the neopixels
+-- Reuse the connector we're currently using
+[X] Pick a strip length
+-- 20
+[X] Cut and remove external sheath
+[X] Test fit inside tube
+[X] Design mount if required
+-- cap for the end of the tube to stop the neopixels springing out and making it easier to glue
+[X] Print it
+[X] Test it
+[X] Final 3D prints produced
+
+Lid
+[X] Review test printed lid
+[X] Modify as required
+-- Magnets for mounting?
+-- Only mods were reducing the size of the display hole and removing the screw holes
+[X] Print it
+[X] Test it
+[X] Final 3D prints produced
+
+Base
+[X] Final 3D print produced
+-- No time to print another one
+
+Fitting in hardware
+[X] Test-fit hardware
+# Design a support frame
+# Print it
+# Test it
+-- Didn't bother with a support frame
+[X] Solder up pins/cables for production Pi
+-- Made connection wires by cutting up the Dupont wires
+-- Soldered directly to the Pi. Terrible idea.
+-- Twisted power wires together, soldered badly and shrink-wrapped. Also not great.
+[X] Load software onto production Pi
+# Test production hardware
+-- Was already in shell
+[X] Mount in shell
+[X] Test production hardware in shell
+-- Didn't work. Issues:
+-- Wired up display to the wrong pins on the Pi. Fixed that in software.
+-- Also wired them up backwards. Fixed that in hardware -- reversed the Dupont connectors on the display.
+-- Neopixels erratic then non-functional. Tried: new batteries; reflowing the solder joint on GP16; switching to GP18; switching to a different strip of pixels. All hopeless. Think  I blew up the Pi somewhat with all the heat and compromised tracks
+[ ] Portal gun complete
+-- Only complete in the sense that I bailed, pulled out most of the electronics and glued everything together. Actually a really nice dumb prop that did the job very well.
+
