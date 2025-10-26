@@ -2,38 +2,34 @@ $fn = 100;
 
 external_diameter = 29.631;
 internal_diameter = 26.9;
+nut_recess_internal_diameter = 15;
+nut_recess_external_diameter = 18;
+nut_recess_internal_height = 8;
+nut_recess_external_height = 9;
 hole_diameter = 7.2;
 top_height = 1;
 bottom_height = 3;
-
+bottom_plate_thickness = 2;
 
 knob_diameter = external_diameter;
-threaded_body_length = 8;
-knob_shaft_length = 11;
-knob_shaft_diameter = 6.4;
+knob_shaft_length = 9.5;
+knob_shaft_diameter = 6.2;
 knob_thickness_above_shaft = 2;
-gap_between_knob_and_plug = 1;
-knob_height = knob_thickness_above_shaft + 
-                knob_shaft_length +
-                threaded_body_length -
-                top_height -
-                bottom_height -
-                gap_between_knob_and_plug;
-nut_recess_diameter = 20;
+knob_height = knob_thickness_above_shaft + knob_shaft_length;
 height_of_knob_shaft_flat_part = 1.6;
 
 bevel_height = 20;
 bevel_outer_diameter = 50;
 bevel_inner_diameter = 15;
-bevel_offset = 7.5;
+bevel_offset = 7;
 
-knob();
-translate([35,0,0]) knob_plug();
+translate([-25,0,0]) knob();
+//translate([25,0,0]) knob_plug();
+//plug_bottom_plate();
 
 module knob() {
     difference() {
         knob_exterior();
-        knob_nut_recess();
         knob_shaft_hole();
         knob_bevel();
     }   
@@ -55,17 +51,6 @@ module knob_exterior() {
     cylinder(h = knob_height, d = knob_diameter);
 }
 
-module knob_nut_recess() {
-
-    recess_height = knob_height -
-                    knob_thickness_above_shaft -
-                    knob_shaft_length; 
-
-    translate([0,0,knob_height -
-                    recess_height])
-        cylinder(h = recess_height + 1,
-                     d = nut_recess_diameter);
-}
 
 module knob_shaft_hole() {
     knob_shaft_hole_length = knob_shaft_length + 1;
@@ -87,9 +72,27 @@ module knob_plug() {
 module plug() {
     cylinder(h=top_height, d=external_diameter);
     translate([0, 0, top_height]) cylinder(h=bottom_height, d=internal_diameter);
+    cylinder(h = top_height + nut_recess_internal_height, d = nut_recess_external_diameter);
 }
 
 module hole() {
     translate([0, 0, -1])
-        cylinder(h=top_height + bottom_height + 2, d=hole_diameter);
+        cylinder(h=top_height + nut_recess_external_height + 2, d=nut_recess_internal_diameter);
+}
+
+module plug_bottom_plate() {
+    difference() {
+        plug_bottom_plate_exterior();
+        plug_bottom_plate_hole();
+    }
+}
+
+module plug_bottom_plate_exterior() {
+    cylinder(h = nut_recess_external_height - nut_recess_internal_height, d = nut_recess_external_diameter);
+    translate([0,0,nut_recess_external_height - nut_recess_internal_height]) cylinder(h = bottom_plate_thickness, d = nut_recess_internal_diameter);
+}
+
+module plug_bottom_plate_hole() {
+    translate([0,0,-1])
+        cylinder(h = nut_recess_external_height + 2, d = hole_diameter);
 }
