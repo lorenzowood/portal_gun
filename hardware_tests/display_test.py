@@ -3,7 +3,7 @@ from tm1637 import TM1637
 import time
 
 # Setup display
-display = TM1637(clk=7, dio=6)
+display = TM1637(clk=8, dio=7)
 
 # Setup button
 button = Pin(12, Pin.IN, Pin.PULL_UP)

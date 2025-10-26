@@ -5,7 +5,7 @@ import time
 # WS2814 are RGBW pixels (4 bytes per pixel)
 # But let's try RGB mode first (3 bytes) - some libraries handle this better
 num_pixels = 8
-pin = Pin(16, Pin.OUT)
+pin = Pin(18, Pin.OUT)
 np = neopixel.NeoPixel(pin, num_pixels, bpp=3)  # bpp=3 for RGB
 
 # Rainbow colours (R, G, B)
